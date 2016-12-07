@@ -1,0 +1,7 @@
+vendor/*
+coverage-report/*
+.php_cs.cache
+composer.lock
+phpunit.xml
+tjson-spec.html
+todo.md

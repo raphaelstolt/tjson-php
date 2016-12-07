@@ -1,0 +1,86 @@
+#!/usr/bin/env php
+<?php
+
+$localExampleFile = dirname(__DIR__)
+    . DIRECTORY_SEPARATOR
+    . implode(DIRECTORY_SEPARATOR, ['tests', 'examples', 'tjson.txt']);
+
+$localExampleDirectory = dirname($localExampleFile);
+
+$remoteExampleFile = 'https://raw.githubusercontent.com/tjson/tjson-spec/master/draft-tjson-examples.txt';
+
+$options = getopt('hv', ['help', 'verbose']);
+$verbose = false;
+
+$help = <<<HELP
+This command updates the annotated TJSON examples file in {$localExampleDirectory}:
+
+Usage:
+  update-examples [-h]
+
+Options:
+  -h, --help                       Display this help message
+  -v, --verbose                    Display verbose messages
+
+HELP;
+
+if (array_key_exists('h', $options) || array_key_exists('help', $options)) {
+    echo $help;
+    exit(0);
+}
+
+if (array_key_exists('v', $options) || array_key_exists('verbose', $options)) {
+    $verbose = true;
+}
+
+$presentRevisionVersion = function() use ($localExampleFile) {
+    $fileObject = new SplFileObject($localExampleFile);
+    foreach ($fileObject as $line => $content) {
+        if (strpos($content, '# Revision:') === 0) {
+            preg_match('/\d+/', $content, $matches);
+            return $matches[0];
+        }
+    }
+};
+
+$updateLocalExampleFile = function() use ($localExampleFile, $remoteExampleFile) {
+    $contents = file_get_contents($remoteExampleFile);
+    if ($contents === false) {
+        echo 'Unable to read the remote examples file.' . PHP_EOL;
+        exit(1);
+    }
+
+    return file_put_contents($localExampleFile, $contents);
+};
+
+$remoteRevisionVersion = function() use ($remoteExampleFile) {
+    $contents = file_get_contents($remoteExampleFile);
+    if ($contents === false) {
+        echo 'Unable to read the remote examples file.' . PHP_EOL;
+        exit(1);
+    }
+
+    preg_match('/(# Revision:\s*)(\d*)/', $contents, $matches);
+    return $matches[2];
+};
+
+$presentRevisionVersion = $presentRevisionVersion();
+$remoteRevisionVersion = $remoteRevisionVersion();
+
+if ($verbose) {
+    echo 'Current local examples file revision is ' . $presentRevisionVersion . '.' . PHP_EOL;
+    echo 'The remote examples file revision is ' . $remoteRevisionVersion . '.' . PHP_EOL;
+}
+
+if ($presentRevisionVersion === $remoteRevisionVersion) {
+    echo 'Current local examples file is up to date.';
+    exit(0);
+}
+
+if ($updateLocalExampleFile() !== false) {
+    echo 'Current local examples file has been updated to revision ' . $remoteRevisionVersion . '.';
+    exit(0);
+}
+
+echo 'Failed to update local examples file to revision ' . $remoteRevisionVersion . '.';
+exit(1);
